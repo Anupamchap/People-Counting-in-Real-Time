@@ -17,6 +17,9 @@ import dlib
 import json
 import csv
 import cv2
+import requests
+import json
+
 
 # execution start time
 start_time = time.time()
@@ -52,7 +55,7 @@ def send_mail():
 
 def log_data(move_in, in_time, move_out, out_time):
 	# function to log the counting data
-	data = [move_in, in_time, move_out, out_time]
+	data = [in_time, move_in, move_out, out_time]
 	# transpose the data to align the columns properly
 	export_data = zip_longest(*data, fillvalue = '')
 
@@ -61,6 +64,37 @@ def log_data(move_in, in_time, move_out, out_time):
 		if myfile.tell() == 0: # check if header rows are already existing
 			wr.writerow(("Move In", "In Time", "Move Out", "Out Time"))
 			wr.writerows(export_data)
+
+def post_data(in_time, move_in, move_out, total):
+		value=""
+		if in_time:  # Check if the list is not empty
+			value = in_time[0]
+			print("Value:", value)
+		else:
+			print("The list is empty.")
+
+		url = 'https://peoplecount.onrender.com/api/data'
+		payload = {
+		"EndTime": value[:-6],
+		"in": move_in,
+		"out": move_out,
+		"totalInside": (move_in - move_out)
+	}
+		headers = {
+		"Content-Type": "application/json"
+	}
+
+		# Make the POST request
+		response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+		# Check the response
+		if response.status_code == 200:
+			print("Request successful.")
+			print("Response:", response.json())
+		else:
+			print("Request failed with status code:", response.status_code)
+
+
 
 def people_counter():
 	# main function for people_counter.py
@@ -317,10 +351,13 @@ def people_counter():
 		for (i, (k, v)) in enumerate(info_total):
 			text = "{}: {}".format(k, v)
 			cv2.putText(frame, text, (265, H - ((i * 20) + 60)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-
+		
+		#post_data
+		post_data(in_time, len(move_in), len(move_out), total)
 		# initiate a simple log to save the counting data
 		if config["Log"]:
 			log_data(move_in, in_time, move_out, out_time)
+		
 
 		# check to see if we should write the frame to disk
 		if writer is not None:
